@@ -1,8 +1,10 @@
+"use client"
+
 import { ThemeProvider } from "./Theme-Provider"
+import { Toaster } from "@/components/ui/sonner"
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
     return (
-        <div>
             <ThemeProvider
                 attribute="class"
                 defaultTheme="system"
@@ -10,8 +12,8 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
                 disableTransitionOnChange
             >
                 {children}
+                <Toaster />
             </ThemeProvider>
-        </div>
     )
 }
 export default Providers
