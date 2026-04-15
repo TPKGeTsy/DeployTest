@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import VocabActions from "@/components/VocabActions"
-import { Song, Vocab } from "@prisma/client"
+import { Song, Vocab } from "@/src/generated/prisma"
 
 // 1. สร้าง Type มารองรับข้อมูลเพลงที่รวมศัพท์ไว้ข้างใน
 type SongWithVocabs = Song & {
