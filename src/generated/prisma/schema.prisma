@@ -1,0 +1,34 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ตัวอย่าง Schema ที่นายต้องมี
+model Song {
+  id        String   @id @default(cuid())
+  title     String
+  lyrics    String   @db.Text
+  videoUrl  String?
+  userId    String // จาก Clerk
+  vocabs    Vocab[] // ความสัมพันธ์: 1 เพลงมีได้หลายศัพท์
+  createdAt DateTime @default(now())
+}
+
+model Vocab {
+  id      String @id @default(cuid())
+  kanji   String
+  reading String
+  meaning String
+  songId  String // ชื่อตรงนี้
+  song    Song   @relation(fields: [songId], references: [id]) // กับตรงนี้ ต้องเหมือนกันเป๊ะ!
+  userId  String
+}
