@@ -24,20 +24,48 @@ export async function fetchLyricsAction(url: string, artist?: string, title?: st
   return lyrics
 }
 
+/**
+ * ฟังก์ชันช่วยหาคำอ่านที่ถูกต้องสำหรับรูปพจนานุกรม
+ */
+async function getBaseFormDetails(word: string) {
+  try {
+    const tokens = await getWords(word)
+    if (tokens.length > 0) {
+      return {
+        reading: tokens[0].reading || "",
+        meaning: "" // จะไปหาจาก Batch แปลอีกที
+      }
+    }
+    return { reading: "", meaning: "" }
+  } catch (e) {
+    return { reading: "", meaning: "" }
+  }
+}
+
 async function batchTranslate(words: string[]) {
   const uniqueWords = Array.from(new Set(words.filter(w => w.trim().length > 0 && !/[\u3000-\u303f\uff01-\uff0f\uff1a-\uff1f]/.test(w))))
+  const wordsToTranslate = uniqueWords.slice(0, 30) 
   const results: Record<string, string> = {}
-  const wordsToTranslate = uniqueWords.slice(0, 40) 
 
-  for (const word of wordsToTranslate) {
-    try {
-      const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=ja|th`)
-      const data = await res.json()
-      results[word] = data.responseData.translatedText
-      await new Promise(resolve => setTimeout(resolve, 50))
-    } catch (e) {
-      results[word] = ""
-    }
+  for (let i = 0; i < wordsToTranslate.length; i += 5) {
+    const chunk = wordsToTranslate.slice(i, i + 5)
+    const promises = chunk.map(async (word) => {
+      try {
+        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=ja|th`, {
+          next: { revalidate: 3600 }
+        })
+        const data = await res.json()
+        return { word, meaning: data.responseData.translatedText }
+      } catch (e) {
+        return { word, meaning: "" }
+      }
+    })
+
+    const chunkResults = await Promise.all(promises)
+    chunkResults.forEach(r => {
+      if (r.meaning) results[r.word] = r.meaning
+    })
+    await new Promise(resolve => setTimeout(resolve, 100))
   }
   return results
 }
@@ -50,14 +78,18 @@ export async function addSongAction(title: string, artist: string, lyrics: strin
 
   try {
     const rawTokens = await getWords(lyrics)
+    const kanjiRegex = /[\u4e00-\u9faf]/
+    
+    // แปลล่วงหน้าโดยใช้รูป Dic-form เป็นหลักถ้ามี
     const wordsToTranslate = rawTokens
-      .filter(t => t.pos !== "punctuator" && t.surface_form.length > 0)
-      .map(t => t.surface_form)
+      .filter(t => kanjiRegex.test(t.surface_form) || (t.pos === "noun" && t.surface_form.length > 1))
+      .map(t => t.base_form || t.surface_form)
     
     const translationMap = await batchTranslate(wordsToTranslate)
+
     const tokens = rawTokens.map(t => ({
       ...t,
-      meaning: translationMap[t.surface_form] || ""
+      meaning: translationMap[t.base_form || t.surface_form] || ""
     }))
 
     const song = await prisma.song.create({
@@ -99,7 +131,6 @@ export async function saveVocabAction(data: {
   }
 }
 
-// ฟังก์ชันเพิ่มศัพท์หลายคำพร้อมกัน
 export async function saveMultipleVocabAction(vocabs: {
   kanji: string
   reading: string
@@ -110,10 +141,9 @@ export async function saveMultipleVocabAction(vocabs: {
   if (vocabs.length === 0) return { success: true, count: 0 }
 
   try {
-    // ใช้ createMany เพื่อความรวดเร็ว
     const result = await prisma.vocab.createMany({
       data: vocabs,
-      skipDuplicates: true // ป้องกันการบันทึกคำซ้ำ
+      skipDuplicates: true
     })
     return { success: true, count: result.count }
   } catch (error) {

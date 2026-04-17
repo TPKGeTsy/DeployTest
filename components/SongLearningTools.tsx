@@ -19,7 +19,7 @@ import {
 } from "./ui/dialog"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
-import { saveVocabAction, translateToThai, updateSongVideoAction, saveMultipleVocabAction } from "@/lib/actions"
+import { saveVocabAction, translateToThai, updateSongVideoAction, saveMultipleVocabAction, getLyricsWords } from "@/lib/actions"
 import { toast } from "sonner"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
@@ -61,28 +61,46 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
   const handleWordClick = async (token: WordToken & { meaning?: string }) => {
     setSelectedWord(token)
     setMeaning("")
+    
+    // พยายามใช้คำแปลของรูป Dic-form ถ้ามี
     if (token.meaning) {
       setMeaning(token.meaning)
       return
     }
+    
     setTranslating(true)
-    const translated = await translateToThai(token.surface_form)
-    setMeaning(translated)
+    // แปลรูปพจนานุกรมแทนรูปที่ผันถ้าเป็นไปได้
+    const translated = await translateToThai(token.base_form || token.surface_form)
+    setMeaning(translated || "ไม่พบคำแปล")
     setTranslating(false)
   }
 
   const handleSaveVocab = async () => {
     if (!selectedWord || !user) return
     setSaving(true)
+
+    // บังคับเซฟเป็นรูปพจนานุกรม (Base Form)
+    const kanjiToSave = selectedWord.base_form || selectedWord.surface_form
+    let readingToSave = selectedWord.reading || ""
+
+    // ถ้าเปลี่ยนเป็นรูปพจนานุกรม ต้องหาคำอ่านใหม่ให้ถูกต้อง
+    if (selectedWord.base_form && selectedWord.base_form !== selectedWord.surface_form) {
+      const tokens = await getLyricsWords(selectedWord.base_form)
+      if (tokens.length > 0) {
+        readingToSave = tokens[0].reading || readingToSave
+      }
+    }
+
     const res = await saveVocabAction({
-      kanji: selectedWord.surface_form,
-      reading: selectedWord.reading || "",
+      kanji: kanjiToSave,
+      reading: readingToSave,
       meaning: meaning || "N/A",
       songId: song.id,
       userId: user.id
     })
+
     if (res.success) {
-      toast.success(`บันทึก "${selectedWord.surface_form}" แล้ว`)
+      toast.success(`บันทึกรูปพจนานุกรม "${kanjiToSave}" แล้ว`)
       setSelectedWord(null)
       router.refresh()
     } else {
@@ -95,43 +113,59 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
     if (!user) return
     setIsBulkSaving(true)
     
-    // 1. Filter: เอาเฉพาะคำที่มี "คันจิ" และไม่ใช่คำช่วย (Particles)
-    // RegExp สำหรับคันจิ: [\u4e00-\u9faf]
     const kanjiRegex = /[\u4e00-\u9faf]/
-    
-    // กรองเอาเฉพาะ Token ที่มีคันจิ และไม่อยู่ใน List ที่เซฟไปแล้ว
     const kanjiTokens = initialTokens.filter(token => {
       const hasKanji = kanjiRegex.test(token.surface_form)
-      const isAlreadySaved = song.vocabs.some(v => v.kanji === token.surface_form)
+      const base = token.base_form || token.surface_form
+      const isAlreadySaved = song.vocabs.some(v => v.kanji === base)
       const isNotParticle = !["particle", "conjunction", "adnominal", "auxiliary_verb"].includes(token.pos)
       return hasKanji && !isAlreadySaved && isNotParticle
     })
 
-    // ลบคำที่ซ้ำกันในเพลง (เช่น คำว่า "私" มีหลายจุด ให้เอาอันเดียว)
-    const uniqueKanjiTokens = Array.from(new Map(kanjiTokens.map(item => [item.surface_form, item])).values())
+    // ลบคำซ้ำโดยอิงจากรูป Dic-form
+    const uniqueDicFormTokens = Array.from(new Map(kanjiTokens.map(item => [item.base_form || item.surface_form, item])).values())
 
-    if (uniqueKanjiTokens.length === 0) {
+    if (uniqueDicFormTokens.length === 0) {
       toast.info("ไม่พบคำศัพท์คันจิใหม่ๆ เพิ่มเติมในเพลงนี้")
       setIsBulkSaving(false)
       return
     }
 
-    toast.info(`กำลังบันทึกคันจิ ${uniqueKanjiTokens.length} คำ...`)
+    toast.info(`กำลังประมวลผล Dic-form ${uniqueDicFormTokens.length} คำ...`)
 
-    // 2. เตรียมข้อมูลบันทึก
-    const vocabsToSave = uniqueKanjiTokens.map(token => ({
-      kanji: token.surface_form,
-      reading: token.reading || "",
-      meaning: (token as any).meaning || "N/A",
-      songId: song.id,
-      userId: user.id
-    }))
+    const vocabsToSave = []
+    
+    for (const token of uniqueDicFormTokens) {
+      const kanji = token.base_form || token.surface_form
+      let meaningToSave = (token as any).meaning || ""
+      let readingToSave = token.reading || ""
 
-    // 3. เรียก Action บันทึกเป็นกลุ่ม
+      // 1. แปลสดถ้าไม่มี
+      if (!meaningToSave) {
+        meaningToSave = await translateToThai(kanji)
+      }
+
+      // 2. หาคำอ่านที่ถูกต้องสำหรับรูปพจนานุกรม (ถ้าเป็นคำที่ผันมา)
+      if (token.base_form && token.base_form !== token.surface_form) {
+        const tempTokens = await getLyricsWords(kanji)
+        if (tempTokens.length > 0) {
+          readingToSave = tempTokens[0].reading || readingToSave
+        }
+      }
+
+      vocabsToSave.push({
+        kanji: kanji,
+        reading: readingToSave,
+        meaning: meaningToSave || "N/A",
+        songId: song.id,
+        userId: user.id
+      })
+    }
+
     const res = await saveMultipleVocabAction(vocabsToSave)
     
     if (res.success) {
-      toast.success(`บันทึกสำเร็จ! เพิ่มคันจิใหม่เข้าคลัง ${res.count} คำ`)
+      toast.success(`บันทึกสำเร็จ! เพิ่ม ${res.count} คำ (ในรูปพจนานุกรม)`)
       router.refresh()
     } else {
       toast.error("เกิดข้อผิดพลาดในการบันทึกแบบกลุ่ม")
@@ -179,7 +213,7 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
               disabled={isBulkSaving}
             >
               {isBulkSaving ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} className="fill-current" />}
-              Add All Kanji
+              Add All Dic-form
             </Button>
 
             <Dialog>
@@ -248,7 +282,7 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
                             selectedWord === token 
                             ? "bg-primary text-primary-foreground scale-110 shadow-lg" 
                             : "hover:bg-primary/20 hover:scale-110"
-                          } ${song.vocabs.some(v => v.kanji === token.surface_form) ? "border-b-2 border-primary/40" : ""}`}
+                          } ${song.vocabs.some(v => v.kanji === (token.base_form || token.surface_form)) ? "border-b-2 border-primary/40" : ""}`}
                         >
                           {token.surface_form}
                         </span>
@@ -267,15 +301,15 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
                     </div>
                     <CardContent className="p-6 space-y-6">
                       <div className="text-center">
-                        <h3 className="text-5xl font-bold mb-1">{selectedWord.surface_form}</h3>
+                        <h3 className="text-5xl font-bold mb-1">{selectedWord.base_form || selectedWord.surface_form}</h3>
+                        <p className="text-sm text-muted-foreground italic mb-2">(Dic-form)</p>
                         <p className="text-xl text-primary font-medium">{selectedWord.reading}</p>
                       </div>
 
                       <div className="space-y-4">
                         {selectedWord.base_form && selectedWord.base_form !== selectedWord.surface_form && (
-                          <div className="bg-primary/5 p-3 rounded-lg border border-primary/10">
-                            <p className="text-xs font-bold uppercase text-primary/60 mb-1">Base Form (รูปพจนานุกรม)</p>
-                            <p className="text-xl font-bold">{selectedWord.base_form}</p>
+                          <div className="bg-accent/30 p-2 rounded text-xs text-center">
+                            เปลี่ยนจากรูปผัน: <strong>{selectedWord.surface_form}</strong>
                           </div>
                         )}
 
@@ -298,11 +332,11 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
                           disabled={saving}
                         >
                           {saving ? <div className="animate-spin border-2 border-current border-t-transparent rounded-full h-4 w-4" /> : <Save size={20} />}
-                          บันทึกเข้าคลัง
+                          บันทึกรูป Dic-form
                         </Button>
                         
                         <a 
-                          href={`https://jisho.org/search/${selectedWord.surface_form}`}
+                          href={`https://jisho.org/search/${selectedWord.base_form || selectedWord.surface_form}`}
                           target="_blank"
                           className="flex items-center justify-center gap-1 text-xs text-blue-500 hover:underline"
                         >
