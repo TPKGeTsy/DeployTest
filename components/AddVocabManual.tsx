@@ -57,7 +57,7 @@ export default function AddVocabManual({ songId }: { songId: string }) {
         setOpen(false)
         router.refresh() // Refresh page to show new vocab in games
       } else {
-        toast.error("เกิดข้อผิดพลาดในการบันทึก")
+        toast.error(res.error || "เกิดข้อผิดพลาดในการบันทึก")
       }
     } catch (error) {
       toast.error("Something went wrong")

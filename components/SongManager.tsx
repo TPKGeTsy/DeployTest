@@ -42,12 +42,11 @@ export default function SongManager() {
 
   const handleSelectSong = async (song: any) => {
     setLoading(true)
-    setResults([]) // Clear search results after selection
+    setResults([]) 
     
     try {
       toast.info("กำลังดึงเนื้อเพลงและข้อมูลวิดีโอ...")
       
-      // Fetch details and lyrics in parallel
       const [lyricsText, details] = await Promise.all([
         fetchLyricsAction(song.url),
         fetchSongDetailsAction(song.id)
@@ -59,16 +58,18 @@ export default function SongManager() {
         return
       }
 
-      // Save song to DB with videoUrl
       if (user) {
         const dbRes = await addSongAction(song.title, song.artist, lyricsText, user.id, details?.youtubeUrl)
         if (dbRes.success) {
           setSongId(dbRes.songId)
           toast.success("บันทึกเพลงและวิดีโอลงคลังแล้ว")
+        } else if (dbRes.error) {
+          toast.error(dbRes.error)
+          setLoading(false)
+          return
         }
       }
 
-      // Tokenize
       const words = await getLyricsWords(lyricsText)
       setTokens(words)
     } catch (error) {
@@ -88,6 +89,10 @@ export default function SongManager() {
       if (dbRes.success) {
         setSongId(dbRes.songId)
         toast.success("บันทึกเพลงลงคลังแล้ว")
+      } else if (dbRes.error) {
+        toast.error(dbRes.error)
+        setLoading(false)
+        return
       }
     }
 

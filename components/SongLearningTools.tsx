@@ -93,7 +93,7 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
       setSelectedWord(null)
       router.refresh()
     } else {
-      toast.error("บันทึกไม่สำเร็จ")
+      toast.error(res.error || "บันทึกไม่สำเร็จ")
     }
     setSaving(false)
   }

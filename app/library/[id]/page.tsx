@@ -1,16 +1,25 @@
 import { prisma } from "@/lib/prisma"
 import SongLearningTools from "@/components/SongLearningTools"
 import AddVocabManual from "@/components/AddVocabManual"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
 import { getWords } from "@/lib/japanese"
+import { auth } from "@clerk/nextjs/server"
 
 export default async function SongDetailPage({ params }: { params: { id: string } }) {
   const { id } = await params
+  const { userId } = await auth()
+
+  if (!userId) {
+    redirect("/")
+  }
 
   const song = await prisma.song.findUnique({
-    where: { id },
+    where: { 
+      id,
+      userId: userId // ตรวจสอบความเป็นเจ้าของ
+    },
     include: {
       vocabs: true
     }
@@ -26,7 +35,11 @@ export default async function SongDetailPage({ params }: { params: { id: string 
     tokens = song.tokens as any[]
   } else {
     tokens = await getWords(song.lyrics)
-    // Optional: update DB with tokens if they were missing
+    // อัปเดต Cache ทันทีถ้ายังไม่มี (ช่วยซ่อมข้อมูลเก่า)
+    await prisma.song.update({
+        where: { id: song.id },
+        data: { tokens: tokens as any }
+    })
   }
 
   return (
