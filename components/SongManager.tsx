@@ -55,7 +55,7 @@ export default function SongManager() {
       toast.info("กำลังดึงข้อมูลเพลงและวิดีโอ...")
       
       const [lyricsText, details] = await Promise.all([
-        fetchLyricsAction(song.url),
+        fetchLyricsAction(song.url, song.artist, song.title),
         fetchSongDetailsAction(song.id)
       ])
       

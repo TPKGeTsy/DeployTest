@@ -6,7 +6,7 @@ import { Card, CardContent } from "./ui/card"
 import FlashcardGame from "./FlashcardGame"
 import QuizGame from "./QuizGame"
 import TypingGame from "./TypingGame"
-import { Music, Brain, Layout, Keyboard, Search, Save, X, Play, Loader2, Video, Edit2 } from "lucide-react"
+import { Music, Brain, Layout, Keyboard, Search, Save, X, Play, Loader2, Video, Edit2, Zap } from "lucide-react"
 import { WordToken } from "@/lib/japanese"
 import { Button } from "./ui/button"
 import { 
@@ -19,7 +19,7 @@ import {
 } from "./ui/dialog"
 import { Input } from "./ui/input"
 import { Label } from "./ui/label"
-import { saveVocabAction, translateToThai, updateSongVideoAction } from "@/lib/actions"
+import { saveVocabAction, translateToThai, updateSongVideoAction, saveMultipleVocabAction } from "@/lib/actions"
 import { toast } from "sonner"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
@@ -49,27 +49,22 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
   const { setVideoUrl } = usePlayerStore()
   const [activeTab, setActiveTab] = useState("lyrics")
   
-  // Video Editing State
+  // States
   const [newVideoUrl, setNewVideoUrl] = useState(song.videoUrl || "")
   const [isUpdatingVideo, setIsUpdatingVideo] = useState(false)
-  
-  // Interactive Lyrics State
   const [selectedWord, setSelectedWord] = useState<WordToken | null>(null)
   const [meaning, setMeaning] = useState("")
   const [translating, setTranslating] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [isBulkSaving, setIsBulkSaving] = useState(false)
 
   const handleWordClick = async (token: WordToken & { meaning?: string }) => {
     setSelectedWord(token)
     setMeaning("")
-    
-    // ถ้ามีคำแปลที่แปลล่วงหน้ามาแล้วใน Token ให้ใช้เลย (ไม่ต้องรอ API)
     if (token.meaning) {
       setMeaning(token.meaning)
       return
     }
-
-    // ถ้าไม่มีค่อยไปเรียก API แปล
     setTranslating(true)
     const translated = await translateToThai(token.surface_form)
     setMeaning(translated)
@@ -79,7 +74,6 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
   const handleSaveVocab = async () => {
     if (!selectedWord || !user) return
     setSaving(true)
-
     const res = await saveVocabAction({
       kanji: selectedWord.surface_form,
       reading: selectedWord.reading || "",
@@ -87,7 +81,6 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
       songId: song.id,
       userId: user.id
     })
-
     if (res.success) {
       toast.success(`บันทึก "${selectedWord.surface_form}" แล้ว`)
       setSelectedWord(null)
@@ -96,6 +89,54 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
       toast.error(res.error || "บันทึกไม่สำเร็จ")
     }
     setSaving(false)
+  }
+
+  const handleAddAllKanji = async () => {
+    if (!user) return
+    setIsBulkSaving(true)
+    
+    // 1. Filter: เอาเฉพาะคำที่มี "คันจิ" และไม่ใช่คำช่วย (Particles)
+    // RegExp สำหรับคันจิ: [\u4e00-\u9faf]
+    const kanjiRegex = /[\u4e00-\u9faf]/
+    
+    // กรองเอาเฉพาะ Token ที่มีคันจิ และไม่อยู่ใน List ที่เซฟไปแล้ว
+    const kanjiTokens = initialTokens.filter(token => {
+      const hasKanji = kanjiRegex.test(token.surface_form)
+      const isAlreadySaved = song.vocabs.some(v => v.kanji === token.surface_form)
+      const isNotParticle = !["particle", "conjunction", "adnominal", "auxiliary_verb"].includes(token.pos)
+      return hasKanji && !isAlreadySaved && isNotParticle
+    })
+
+    // ลบคำที่ซ้ำกันในเพลง (เช่น คำว่า "私" มีหลายจุด ให้เอาอันเดียว)
+    const uniqueKanjiTokens = Array.from(new Map(kanjiTokens.map(item => [item.surface_form, item])).values())
+
+    if (uniqueKanjiTokens.length === 0) {
+      toast.info("ไม่พบคำศัพท์คันจิใหม่ๆ เพิ่มเติมในเพลงนี้")
+      setIsBulkSaving(false)
+      return
+    }
+
+    toast.info(`กำลังบันทึกคันจิ ${uniqueKanjiTokens.length} คำ...`)
+
+    // 2. เตรียมข้อมูลบันทึก
+    const vocabsToSave = uniqueKanjiTokens.map(token => ({
+      kanji: token.surface_form,
+      reading: token.reading || "",
+      meaning: (token as any).meaning || "N/A",
+      songId: song.id,
+      userId: user.id
+    }))
+
+    // 3. เรียก Action บันทึกเป็นกลุ่ม
+    const res = await saveMultipleVocabAction(vocabsToSave)
+    
+    if (res.success) {
+      toast.success(`บันทึกสำเร็จ! เพิ่มคันจิใหม่เข้าคลัง ${res.count} คำ`)
+      router.refresh()
+    } else {
+      toast.error("เกิดข้อผิดพลาดในการบันทึกแบบกลุ่ม")
+    }
+    setIsBulkSaving(false)
   }
 
   const handleUpdateVideo = async () => {
@@ -117,8 +158,8 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
         <div className="flex flex-col sm:flex-row items-center gap-4 mb-2">
           <p className="text-muted-foreground text-sm">คลิกที่คำศัพท์ในเนื้อเพลงเพื่อบันทึกเข้าคลัง</p>
           
-          <div className="flex items-center gap-2">
-            {song.videoUrl ? (
+          <div className="flex items-center gap-3">
+            {song.videoUrl && (
               <Button 
                 size="sm" 
                 variant="outline" 
@@ -128,11 +169,18 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
                 <Play size={14} className="fill-current" />
                 <span className="font-bold">Play Music</span>
               </Button>
-            ) : (
-              <span className="text-xs text-orange-500 font-bold flex items-center gap-1">
-                <Video size={14} /> ไม่มีวิดีโอ
-              </span>
             )}
+
+            <Button
+              size="sm"
+              variant="secondary"
+              className="rounded-full gap-2 font-bold px-4 hover:scale-105 transition-transform"
+              onClick={handleAddAllKanji}
+              disabled={isBulkSaving}
+            >
+              {isBulkSaving ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} className="fill-current" />}
+              Add All Kanji
+            </Button>
 
             <Dialog>
               <DialogTrigger asChild>
@@ -151,9 +199,6 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
                     value={newVideoUrl}
                     onChange={(e) => setNewVideoUrl(e.target.value)}
                   />
-                  <p className="text-[10px] text-muted-foreground italic">
-                    * ใส่ลิงก์ YouTube ของเพลงนี้เพื่อให้สามารถเล่นเพลงเป็นพื้นหลังได้
-                  </p>
                 </div>
                 <DialogFooter>
                   <Button onClick={handleUpdateVideo} disabled={isUpdatingVideo}>
@@ -194,7 +239,7 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
                   <div className="leading-relaxed flex flex-wrap gap-x-1 gap-y-4 justify-center">
                     {initialTokens.map((token, index) => (
                       <div key={index} className="group relative flex flex-col items-center">
-                        <span className="text-[10px] text-primary/60 h-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] text-primary/60 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-center">
                           {token.reading}
                         </span>
                         <span

@@ -8,12 +8,9 @@ import { songSchema, vocabSchema } from "./schemas"
 export async function searchSongAction(query: string) {
   if (!query) return []
   const res = await searchSongs(query)
-  
-  // ตรวจสอบว่าเป็น Error Object หรือไม่
-  if (res && 'error' in res) {
+  if (res && typeof res === 'object' && 'error' in res) {
     return { error: res.error }
   }
-  
   return res
 }
 
@@ -21,13 +18,12 @@ export async function fetchSongDetailsAction(songId: number) {
   return await getSongDetails(songId)
 }
 
-export async function fetchLyricsAction(url: string) {
+export async function fetchLyricsAction(url: string, artist?: string, title?: string) {
   if (!url) return null
-  const lyrics = await fetchLyricsByUrl(url)
+  const lyrics = await fetchLyricsByUrl(url, artist, title)
   return lyrics
 }
 
-// ฟังก์ชันช่วยแปลเป็นกลุ่มเพื่อให้เว็บเร็วขึ้น
 async function batchTranslate(words: string[]) {
   const uniqueWords = Array.from(new Set(words.filter(w => w.trim().length > 0 && !/[\u3000-\u303f\uff01-\uff0f\uff1a-\uff1f]/.test(w))))
   const results: Record<string, string> = {}
@@ -47,7 +43,6 @@ async function batchTranslate(words: string[]) {
 }
 
 export async function addSongAction(title: string, artist: string, lyrics: string, userId: string, videoUrl?: string) {
-  // 0. Validate with Zod
   const validation = songSchema.safeParse({ title: `${title} - ${artist}`, lyrics, userId, videoUrl })
   if (!validation.success) {
     return { error: validation.error.issues[0].message }
@@ -88,7 +83,6 @@ export async function saveVocabAction(data: {
   songId: string
   userId: string
 }) {
-  // 0. Validate with Zod
   const validation = vocabSchema.safeParse(data)
   if (!validation.success) {
     return { error: validation.error.issues[0].message }
@@ -102,6 +96,29 @@ export async function saveVocabAction(data: {
   } catch (error) {
     console.error('Error saving vocab:', error)
     return { error: 'Failed to save vocabulary' }
+  }
+}
+
+// ฟังก์ชันเพิ่มศัพท์หลายคำพร้อมกัน
+export async function saveMultipleVocabAction(vocabs: {
+  kanji: string
+  reading: string
+  meaning: string
+  songId: string
+  userId: string
+}[]) {
+  if (vocabs.length === 0) return { success: true, count: 0 }
+
+  try {
+    // ใช้ createMany เพื่อความรวดเร็ว
+    const result = await prisma.vocab.createMany({
+      data: vocabs,
+      skipDuplicates: true // ป้องกันการบันทึกคำซ้ำ
+    })
+    return { success: true, count: result.count }
+  } catch (error) {
+    console.error('Error bulk saving vocab:', error)
+    return { error: 'Failed to bulk save vocabulary' }
   }
 }
 
