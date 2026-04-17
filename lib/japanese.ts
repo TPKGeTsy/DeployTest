@@ -1,7 +1,7 @@
 import Kuroshiro from "kuroshiro"
 import KuromojiAnalyzer from "kuroshiro-analyzer-kuromoji"
 
-let kuroshiro: Kuroshiro | null = null
+let kuroshiro: any = null
 
 async function initKuroshiro() {
   if (kuroshiro) return kuroshiro

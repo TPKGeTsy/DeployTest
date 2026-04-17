@@ -59,11 +59,18 @@ export default function SongLearningTools({ song, initialTokens }: SongLearningT
   const [translating, setTranslating] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  const handleWordClick = async (token: WordToken) => {
+  const handleWordClick = async (token: WordToken & { meaning?: string }) => {
     setSelectedWord(token)
     setMeaning("")
-    setTranslating(true)
     
+    // ถ้ามีคำแปลที่แปลล่วงหน้ามาแล้วใน Token ให้ใช้เลย (ไม่ต้องรอ API)
+    if (token.meaning) {
+      setMeaning(token.meaning)
+      return
+    }
+
+    // ถ้าไม่มีค่อยไปเรียก API แปล
+    setTranslating(true)
     const translated = await translateToThai(token.surface_form)
     setMeaning(translated)
     setTranslating(false)

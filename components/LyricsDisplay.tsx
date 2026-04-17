@@ -15,6 +15,7 @@ interface LyricsDisplayProps {
 }
 
 interface SavedVocab {
+  id: string
   kanji: string
   reading: string
   meaning: string
@@ -49,11 +50,12 @@ export default function LyricsDisplay({ tokens, songId }: LyricsDisplayProps) {
       userId: user.id
     })
 
-    if (res.success) {
+    if (res.success && res.vocabId) {
       toast.success(`เพิ่มคำศัพท์ "${selectedWord.surface_form}" แล้ว!`)
       
-      // Add to local list for the mini game
+      // Add to local list for the mini game with the ID from DB
       setSavedVocabs(prev => [...prev, {
+        id: res.vocabId as string,
         kanji: selectedWord.surface_form,
         reading: selectedWord.reading || "",
         meaning: meaning || "N/A"
@@ -73,7 +75,6 @@ export default function LyricsDisplay({ tokens, songId }: LyricsDisplayProps) {
           <div className="leading-relaxed flex flex-wrap gap-x-1 gap-y-3">
             {tokens.map((token, index) => (
               <div key={index} className="group relative flex flex-col items-center">
-                {/* Furigana over the word */}
                 <span className="text-[10px] text-muted-foreground h-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   {token.reading}
                 </span>
