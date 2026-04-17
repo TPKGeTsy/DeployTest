@@ -8,6 +8,7 @@ import { WordToken } from "@/lib/japanese"
 import LyricsDisplay from "./LyricsDisplay"
 import { toast } from "sonner"
 import { useUser } from "@clerk/nextjs"
+import { Music, AlertCircle } from "lucide-react"
 
 export default function SongManager() {
   const { user } = useUser()
@@ -31,20 +32,14 @@ export default function SongManager() {
     
     try {
       const res = await searchSongAction(query)
-      
-      // ตรวจสอบ Error จาก Server
       if (res && typeof res === 'object' && 'error' in res) {
         toast.error(res.error as string)
         setLoading(false)
         return
       }
-
       const songResults = Array.isArray(res) ? res : []
       setResults(songResults)
-      
-      if (songResults.length === 0) {
-        toast.error("ไม่พบเพลงที่ค้นหา")
-      }
+      if (songResults.length === 0) toast.error("ไม่พบเพลงที่ค้นหา")
     } catch (error) {
       toast.error("เกิดข้อผิดพลาดในการค้นหา")
     } finally {
@@ -57,19 +52,29 @@ export default function SongManager() {
     setResults([]) 
     
     try {
-      toast.info("กำลังดึงเนื้อเพลงและข้อมูลวิดีโอ...")
+      toast.info("กำลังดึงข้อมูลเพลงและวิดีโอ...")
       
       const [lyricsText, details] = await Promise.all([
         fetchLyricsAction(song.url),
         fetchSongDetailsAction(song.id)
       ])
       
+      // กรณีดึงเนื้อเพลงไม่ได้ (โดนบล็อก)
       if (!lyricsText) {
-        toast.error("ดึงเนื้อเพลงไม่สำเร็จ กรุณาลองใหม่หรือใช้วิธีวางเนื้อเพลงเอง")
+        toast.warning("ดึงเนื้อเพลงไม่สำเร็จเนื่องจากระบบป้องกันต้นทาง", {
+          description: "แต่เราหาลิงก์วิดีโอให้แล้ว! กรุณาวางเนื้อเพลงด้วยตัวเองด้านล่างครับ",
+          duration: 6000
+        })
+        
+        // สลับไปโหมดแมนนวล แต่ใส่ข้อมูลที่หามาได้ให้เลย!
+        setManualTitle(`${song.title} - ${song.artist}`)
+        setManualVideo(details?.youtubeUrl || "")
+        setManualMode(true)
         setLoading(false)
         return
       }
 
+      // กรณีดึงได้ปกติ
       if (user) {
         const dbRes = await addSongAction(song.title, song.artist, lyricsText, user.id, details?.youtubeUrl)
         if (dbRes.success) {
@@ -100,7 +105,7 @@ export default function SongManager() {
       const dbRes = await addSongAction(manualTitle, "Manual Entry", manualLyrics, user.id, manualVideo)
       if (dbRes.success) {
         setSongId(dbRes.songId)
-        toast.success("บันทึกเพลงลงคลังแล้ว")
+        toast.success("บันทึกเพลงลงคลังเรียบร้อย")
       } else if (dbRes.error) {
         toast.error(dbRes.error)
         setLoading(false)
@@ -117,7 +122,10 @@ export default function SongManager() {
   return (
     <div className="max-w-4xl mx-auto p-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">{manualMode ? "Manual Entry" : "Search Song"}</h2>
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          {manualMode ? <AlertCircle className="text-orange-500" /> : <Music className="text-primary" />}
+          {manualMode ? "Complete Song Info" : "Search Song"}
+        </h2>
         <Button variant="ghost" onClick={() => {
           setManualMode(!manualMode)
           setResults([])
@@ -133,54 +141,69 @@ export default function SongManager() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="ใส่ชื่อเพลงที่ต้องการ (เช่น Lemon - Kenshi Yonezu)"
-            className="flex-1"
+            className="flex-1 h-12 text-lg"
           />
-          <Button type="submit" disabled={loading}>
+          <Button type="submit" size="lg" disabled={loading} className="h-12 px-8 font-bold">
             {loading ? "Searching..." : "Search"}
           </Button>
         </form>
       ) : (
-        <form onSubmit={handleManualSubmit} className="space-y-4 mb-8">
-          <Input
-            value={manualTitle}
-            onChange={(e) => setManualTitle(e.target.value)}
-            placeholder="ชื่อเพลง"
-            required
-          />
-          <Input
-            value={manualVideo}
-            onChange={(e) => setManualVideo(e.target.value)}
-            placeholder="YouTube URL (ถ้ามี)"
-          />
-          <textarea
-            value={manualLyrics}
-            onChange={(e) => setManualLyrics(e.target.value)}
-            placeholder="วางเนื้อเพลงที่นี่..."
-            className="w-full min-h-[200px] p-2 border rounded bg-background"
-            required
-          />
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Processing..." : "Submit Lyrics"}
+        <form onSubmit={handleManualSubmit} className="space-y-4 mb-8 bg-accent/20 p-6 rounded-2xl border-2 border-primary/20 animate-in fade-in slide-in-from-top-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-muted-foreground ml-1">ชื่อเพลง - ศิลปิน</label>
+              <Input
+                value={manualTitle}
+                onChange={(e) => setManualTitle(e.target.value)}
+                placeholder="เช่น Lemon - Kenshi Yonezu"
+                required
+                className="bg-background"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase text-muted-foreground ml-1">YouTube URL (ระบบหาให้แล้วถ้ามี)</label>
+              <Input
+                value={manualVideo}
+                onChange={(e) => setManualVideo(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="bg-background border-primary/30"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase text-muted-foreground ml-1">วางเนื้อเพลงภาษาญี่ปุ่นที่นี่</label>
+            <textarea
+              value={manualLyrics}
+              onChange={(e) => setManualLyrics(e.target.value)}
+              placeholder="วางเนื้อเพลงญี่ปุ่นที่ก๊อปมา..."
+              className="w-full min-h-[250px] p-4 border-2 rounded-xl bg-background focus:border-primary outline-none transition-all"
+              required
+            />
+          </div>
+          <Button type="submit" size="lg" className="w-full font-bold text-lg h-14" disabled={loading}>
+            {loading ? "Processing Tokens..." : "Import & Start Learning ✨"}
           </Button>
         </form>
       )}
 
       {results.length > 0 && (
-        <div className="mb-8 p-4 border rounded bg-muted/50">
-          <h3 className="font-bold mb-4">ผลการค้นหา ({results.length}):</h3>
+        <div className="mb-8 p-4 border rounded-2xl bg-muted/50 shadow-inner overflow-hidden animate-in fade-in zoom-in-95">
+          <h3 className="font-bold mb-4 px-2">ผลการค้นหา ({results.length}):</h3>
           <div className="space-y-2">
             {results.map((song) => (
-              <div key={song.id} className="flex items-center justify-between p-2 border-b last:border-0">
-                <div className="flex items-center gap-3">
-                  {song.thumbnail && (
-                    <img src={song.thumbnail} alt={song.title} className="w-12 h-12 object-cover rounded" />
+              <div key={song.id} className="flex items-center justify-between p-3 border-b last:border-0 hover:bg-background/50 rounded-xl transition-colors">
+                <div className="flex items-center gap-4">
+                  {song.thumbnail ? (
+                    <img src={song.thumbnail} alt={song.title} className="w-14 h-14 object-cover rounded-lg shadow-md" />
+                  ) : (
+                    <div className="w-14 h-14 bg-accent flex items-center justify-center rounded-lg"><Music size={24} /></div>
                   )}
                   <div>
-                    <p className="font-medium">{song.title}</p>
+                    <p className="font-bold text-lg leading-tight">{song.title}</p>
                     <p className="text-sm text-muted-foreground">{song.artist}</p>
                   </div>
                 </div>
-                <Button variant="secondary" onClick={() => handleSelectSong(song)}>เลือกเพลงนี้</Button>
+                <Button variant="outline" className="font-bold hover:bg-primary hover:text-primary-foreground transition-all" onClick={() => handleSelectSong(song)}>เลือกเพลงนี้</Button>
               </div>
             ))}
           </div>
@@ -188,12 +211,15 @@ export default function SongManager() {
       )}
 
       {tokens.length > 0 && (
-        <LyricsDisplay tokens={tokens} songId={songId} />
+        <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+          <LyricsDisplay tokens={tokens} songId={songId} />
+        </div>
       )}
       
-      {loading && (
-        <div className="text-center py-10">
-          <p className="animate-pulse text-lg font-medium">กำลังดำเนินการ...</p>
+      {loading && !manualMode && (
+        <div className="text-center py-20">
+          <div className="animate-spin inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full mb-4" />
+          <p className="animate-pulse text-lg font-bold text-primary">กำลังประมวลผลบทเพลงของคุณ...</p>
         </div>
       )}
     </div>
