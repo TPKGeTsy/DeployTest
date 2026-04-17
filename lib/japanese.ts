@@ -1,5 +1,6 @@
 import Kuroshiro from "kuroshiro"
 import KuromojiAnalyzer from "kuroshiro-analyzer-kuromoji"
+import path from "path"
 
 let kuroshiro: any = null
 
@@ -17,18 +18,6 @@ export async function convertToFurigana(text: string) {
 
 export async function tokenize(text: string) {
   const ks = await initKuroshiro()
-  // Since kuroshiro doesn't expose a direct tokenization API easily that returns objects with parts of speech,
-  // we might use the underlying analyzer or just use kuroshiro's conversion if it's enough.
-  // For vocabulary learning, we want to split by words.
-  
-  // Actually, Kuroshiro's analyzer can be used directly if we want more control.
-  const analyzer = new KuromojiAnalyzer()
-  // analyzer.init() is called by kuroshiro.init() but we can use it.
-  
-  // Let's use a simpler approach for now:
-  // Convert to furigana and then we can parse the HTML or use a different library if we need tokens.
-  
-  // Wait, let's just use the analyzer directly to get tokens.
   const analyzerInstance = new KuromojiAnalyzer()
   await analyzerInstance.init()
   const tokens = await (analyzerInstance as any)._analyzer.tokenize(text)
@@ -46,15 +35,28 @@ let analyzerInstance: any = null
 
 async function getAnalyzer() {
   if (analyzerInstance) return analyzerInstance
+  
+  // ใช้ path.join เพื่อให้ Vercel หาไฟล์พจนานุกรมเจอแน่นอน
+  const dictPath = path.join(process.cwd(), "node_modules", "kuromoji", "dict")
+  
   const analyzer = new KuromojiAnalyzer({
-    dictPath: "node_modules/kuromoji/dict"
+    dictPath: dictPath
   })
-  await analyzer.init()
-  analyzerInstance = (analyzer as any)._analyzer
-  return analyzerInstance
+  
+  try {
+    await analyzer.init()
+    analyzerInstance = (analyzer as any)._analyzer
+    return analyzerInstance
+  } catch (error) {
+    console.error("Failed to initialize Kuromoji analyzer:", error)
+    // Fallback: ลองไม่ใส่ path (ใช้ default)
+    const fallbackAnalyzer = new KuromojiAnalyzer()
+    await fallbackAnalyzer.init()
+    analyzerInstance = (fallbackAnalyzer as any)._analyzer
+    return analyzerInstance
+  }
 }
 
-// ฟังก์ชันช่วยแปลง Katakana เป็น Hiragana
 function katakanaToHiragana(src: string) {
   return src.replace(/[\u30a1-\u30f6]/g, (match) => {
     const chr = match.charCodeAt(0) - 0x60
@@ -63,19 +65,26 @@ function katakanaToHiragana(src: string) {
 }
 
 export async function getWords(text: string): Promise<WordToken[]> {
+  if (!text) return []
+
   try {
     const analyzer = await getAnalyzer()
-    const tokens = await analyzer.tokenize(text)
+    // ล้างข้อความเบื้องต้น (เอาบรรทัดว่างออก, ตัดช่องว่างหัวท้าย)
+    const cleanedText = text.trim()
+    const tokens = await analyzer.tokenize(cleanedText)
     
     return tokens.map((token: any) => ({
       surface_form: token.surface_form,
-      // แปลงคำอ่านจาก Katakana (ค่าเริ่มต้นของ Kuromoji) ให้เป็น Hiragana
       reading: token.reading ? katakanaToHiragana(token.reading) : undefined,
       base_form: token.basic_form,
       pos: token.pos
     }))
   } catch (error) {
-    console.error("Tokenization error:", error)
-    return [{ surface_form: text, pos: "error" }]
+    console.error("Tokenization error detail:", error)
+    // ถ้าพลาดจริงๆ ให้แยกด้วยช่องว่างเป็นอย่างน้อย (ดีกว่าก้อนเดียว)
+    return text.split(/\s+/).map(word => ({
+      surface_form: word,
+      pos: "unknown"
+    }))
   }
 }

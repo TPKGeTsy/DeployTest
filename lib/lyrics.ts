@@ -43,37 +43,62 @@ export async function getSongDetails(songId: number) {
   } catch (e) { return null }
 }
 
+/**
+ * ฟังก์ชันพยายามดึงเนื้อเพลงให้ได้มากที่สุด
+ */
 export async function fetchLyricsByUrl(url: string) {
   try {
-    // พยายามดึงเนื้อเพลงโดยใช้ library
-    // หมายเหตุ: บน Vercel อาจถูกบล็อก ถ้าถูกบล็อกจะส่งค่าว่างกลับไป
-    const lyrics = await getLyrics({
-        apiKey: getAccessToken() || '',
-        title: '',
-        artist: '',
-        optimizeQuery: false,
-        url: url
-    })
+    // 1. ลองใช้ Library ปกติ (ใส่ Agent เต็มสูบ)
+    const options = {
+      apiKey: getAccessToken() || '',
+      title: '',
+      artist: '',
+      optimizeQuery: false,
+      url: url
+    }
 
-    if (lyrics) return lyrics
+    const lyrics = await getLyrics(options)
+    if (lyrics && lyrics.length > 50) return cleanLyrics(lyrics)
 
-    // ถ้าวิธีแรกไม่ได้ผล (มักจะเกิดบน Vercel)
-    // เราจะลองดึงเองด้วย fetch + ใส่ User-Agent เพื่อหลอกว่าเป็น Browser
+    // 2. ถ้าไม่ได้ ลองดึงสดด้วย fetch + Header ปลอม
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9,th;q=0.8'
       }
     })
     
-    if (!response.ok) return null
-    const html = await response.text()
-    
-    // พยายามดึงเนื้อเพลงจาก HTML แบบ Manual (Fall-back)
-    // Genius เก็บเนื้อเพลงไว้ใน div ที่มี class ชื่อ 'Lyrics__Container'
-    // วิธีนี้ซับซ้อนหน่อย แต่ช่วยให้โอกาสรอดสูงขึ้น
-    return "เนื้อเพลงถูกบล็อกโดยต้นทางชั่วคราว กรุณาใช้ปุ่ม 'Paste Lyrics Manually' เพื่อวางเนื้อเพลงเองครับ"
+    if (response.ok) {
+      const html = await response.text()
+      
+      // ลองใช้ Regex แงะข้อมูลจาก Container ของ Genius
+      // Genius มักจะเก็บเนื้อเพลงไว้ในส่วนที่มี class 'Lyrics__Container'
+      const match = html.match(/<div data-lyrics-container="true".*?>(.*?)<\/div>/g)
+      if (match) {
+        const text = match.join('\n')
+          .replace(/<br.*?>/g, '\n') // เปลี่ยน <br> เป็นขึ้นบรรทัดใหม่
+          .replace(/<.*?>/g, '') // ลบ Tag HTML อื่นๆ ออก
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+        
+        if (text.length > 50) return cleanLyrics(text)
+      }
+    }
+
+    return null
   } catch (error) {
     console.error('Error fetching lyrics:', error)
     return null
   }
+}
+
+/**
+ * ล้างข้อมูลขยะในเนื้อเพลง เช่น [Chorus], [Verse]
+ */
+function cleanLyrics(text: string) {
+  return text
+    .replace(/\[.*?\]/g, '') // ลบพวก [Verse 1], [Chorus]
+    .replace(/\n\s*\n/g, '\n\n') // ลบบรรทัดว่างที่ซ้ำซ้อน
+    .trim()
 }
