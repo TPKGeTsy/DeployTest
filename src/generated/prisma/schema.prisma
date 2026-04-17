@@ -17,6 +17,7 @@ model Song {
   id        String   @id @default(cuid())
   title     String
   lyrics    String   @db.Text
+  tokens    Json? // เก็บอาเรย์ของคำศัพท์ที่ตัดแล้ว (Cache)
   videoUrl  String?
   userId    String // จาก Clerk
   vocabs    Vocab[] // ความสัมพันธ์: 1 เพลงมีได้หลายศัพท์

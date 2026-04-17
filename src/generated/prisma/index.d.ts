@@ -1019,6 +1019,7 @@ export namespace Prisma {
     id: number
     title: number
     lyrics: number
+    tokens: number
     videoUrl: number
     userId: number
     createdAt: number
@@ -1048,6 +1049,7 @@ export namespace Prisma {
     id?: true
     title?: true
     lyrics?: true
+    tokens?: true
     videoUrl?: true
     userId?: true
     createdAt?: true
@@ -1130,6 +1132,7 @@ export namespace Prisma {
     id: string
     title: string
     lyrics: string
+    tokens: JsonValue | null
     videoUrl: string | null
     userId: string
     createdAt: Date
@@ -1156,6 +1159,7 @@ export namespace Prisma {
     id?: boolean
     title?: boolean
     lyrics?: boolean
+    tokens?: boolean
     videoUrl?: boolean
     userId?: boolean
     createdAt?: boolean
@@ -1167,6 +1171,7 @@ export namespace Prisma {
     id?: boolean
     title?: boolean
     lyrics?: boolean
+    tokens?: boolean
     videoUrl?: boolean
     userId?: boolean
     createdAt?: boolean
@@ -1176,6 +1181,7 @@ export namespace Prisma {
     id?: boolean
     title?: boolean
     lyrics?: boolean
+    tokens?: boolean
     videoUrl?: boolean
     userId?: boolean
     createdAt?: boolean
@@ -1185,12 +1191,13 @@ export namespace Prisma {
     id?: boolean
     title?: boolean
     lyrics?: boolean
+    tokens?: boolean
     videoUrl?: boolean
     userId?: boolean
     createdAt?: boolean
   }
 
-  export type SongOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "lyrics" | "videoUrl" | "userId" | "createdAt", ExtArgs["result"]["song"]>
+  export type SongOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "lyrics" | "tokens" | "videoUrl" | "userId" | "createdAt", ExtArgs["result"]["song"]>
   export type SongInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     vocabs?: boolean | Song$vocabsArgs<ExtArgs>
     _count?: boolean | SongCountOutputTypeDefaultArgs<ExtArgs>
@@ -1207,6 +1214,7 @@ export namespace Prisma {
       id: string
       title: string
       lyrics: string
+      tokens: Prisma.JsonValue | null
       videoUrl: string | null
       userId: string
       createdAt: Date
@@ -1637,6 +1645,7 @@ export namespace Prisma {
     readonly id: FieldRef<"Song", 'String'>
     readonly title: FieldRef<"Song", 'String'>
     readonly lyrics: FieldRef<"Song", 'String'>
+    readonly tokens: FieldRef<"Song", 'Json'>
     readonly videoUrl: FieldRef<"Song", 'String'>
     readonly userId: FieldRef<"Song", 'String'>
     readonly createdAt: FieldRef<"Song", 'DateTime'>
@@ -3169,6 +3178,7 @@ export namespace Prisma {
     id: 'id',
     title: 'title',
     lyrics: 'lyrics',
+    tokens: 'tokens',
     videoUrl: 'videoUrl',
     userId: 'userId',
     createdAt: 'createdAt'
@@ -3197,12 +3207,29 @@ export namespace Prisma {
   export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
+  export const NullableJsonNullValueInput: {
+    DbNull: typeof DbNull,
+    JsonNull: typeof JsonNull
+  };
+
+  export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
   export const QueryMode: {
     default: 'default',
     insensitive: 'insensitive'
   };
 
   export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+  export const JsonNullValueFilter: {
+    DbNull: typeof DbNull,
+    JsonNull: typeof JsonNull,
+    AnyNull: typeof AnyNull
+  };
+
+  export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 
 
   export const NullsOrder: {
@@ -3229,6 +3256,20 @@ export namespace Prisma {
    * Reference to a field of type 'String[]'
    */
   export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'String[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Json'
+   */
+  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+  /**
+   * Reference to a field of type 'QueryMode'
+   */
+  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -3270,6 +3311,7 @@ export namespace Prisma {
     id?: StringFilter<"Song"> | string
     title?: StringFilter<"Song"> | string
     lyrics?: StringFilter<"Song"> | string
+    tokens?: JsonNullableFilter<"Song">
     videoUrl?: StringNullableFilter<"Song"> | string | null
     userId?: StringFilter<"Song"> | string
     createdAt?: DateTimeFilter<"Song"> | Date | string
@@ -3280,6 +3322,7 @@ export namespace Prisma {
     id?: SortOrder
     title?: SortOrder
     lyrics?: SortOrder
+    tokens?: SortOrderInput | SortOrder
     videoUrl?: SortOrderInput | SortOrder
     userId?: SortOrder
     createdAt?: SortOrder
@@ -3293,6 +3336,7 @@ export namespace Prisma {
     NOT?: SongWhereInput | SongWhereInput[]
     title?: StringFilter<"Song"> | string
     lyrics?: StringFilter<"Song"> | string
+    tokens?: JsonNullableFilter<"Song">
     videoUrl?: StringNullableFilter<"Song"> | string | null
     userId?: StringFilter<"Song"> | string
     createdAt?: DateTimeFilter<"Song"> | Date | string
@@ -3303,6 +3347,7 @@ export namespace Prisma {
     id?: SortOrder
     title?: SortOrder
     lyrics?: SortOrder
+    tokens?: SortOrderInput | SortOrder
     videoUrl?: SortOrderInput | SortOrder
     userId?: SortOrder
     createdAt?: SortOrder
@@ -3318,6 +3363,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"Song"> | string
     title?: StringWithAggregatesFilter<"Song"> | string
     lyrics?: StringWithAggregatesFilter<"Song"> | string
+    tokens?: JsonNullableWithAggregatesFilter<"Song">
     videoUrl?: StringNullableWithAggregatesFilter<"Song"> | string | null
     userId?: StringWithAggregatesFilter<"Song"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Song"> | Date | string
@@ -3387,6 +3433,7 @@ export namespace Prisma {
     id?: string
     title: string
     lyrics: string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: string | null
     userId: string
     createdAt?: Date | string
@@ -3397,6 +3444,7 @@ export namespace Prisma {
     id?: string
     title: string
     lyrics: string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: string | null
     userId: string
     createdAt?: Date | string
@@ -3407,6 +3455,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     lyrics?: StringFieldUpdateOperationsInput | string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     userId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3417,6 +3466,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     lyrics?: StringFieldUpdateOperationsInput | string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     userId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3427,6 +3477,7 @@ export namespace Prisma {
     id?: string
     title: string
     lyrics: string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: string | null
     userId: string
     createdAt?: Date | string
@@ -3436,6 +3487,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     lyrics?: StringFieldUpdateOperationsInput | string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     userId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3445,6 +3497,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     lyrics?: StringFieldUpdateOperationsInput | string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     userId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3526,6 +3579,29 @@ export namespace Prisma {
     mode?: QueryMode
     not?: NestedStringFilter<$PrismaModel> | string
   }
+  export type JsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
 
   export type StringNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
@@ -3572,6 +3648,7 @@ export namespace Prisma {
     id?: SortOrder
     title?: SortOrder
     lyrics?: SortOrder
+    tokens?: SortOrder
     videoUrl?: SortOrder
     userId?: SortOrder
     createdAt?: SortOrder
@@ -3611,6 +3688,32 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedStringFilter<$PrismaModel>
     _max?: NestedStringFilter<$PrismaModel>
+  }
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -3812,6 +3915,40 @@ export namespace Prisma {
     not?: NestedIntFilter<$PrismaModel> | number
   }
 
+  export type NestedIntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+  export type NestedJsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -3827,17 +3964,6 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedStringNullableFilter<$PrismaModel>
     _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
-  export type NestedIntNullableFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
   export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
@@ -3912,6 +4038,7 @@ export namespace Prisma {
     id?: string
     title: string
     lyrics: string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: string | null
     userId: string
     createdAt?: Date | string
@@ -3921,6 +4048,7 @@ export namespace Prisma {
     id?: string
     title: string
     lyrics: string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: string | null
     userId: string
     createdAt?: Date | string
@@ -3946,6 +4074,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     lyrics?: StringFieldUpdateOperationsInput | string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     userId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3955,6 +4084,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     title?: StringFieldUpdateOperationsInput | string
     lyrics?: StringFieldUpdateOperationsInput | string
+    tokens?: NullableJsonNullValueInput | InputJsonValue
     videoUrl?: NullableStringFieldUpdateOperationsInput | string | null
     userId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string

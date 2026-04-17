@@ -1,51 +1,67 @@
 import { prisma } from "@/lib/prisma"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import VocabActions from "@/components/VocabActions"
-import { Song, Vocab } from "@/src/generated/prisma"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import Link from "next/link"
+import { Music, BookOpen } from "lucide-react"
 
-// 1. สร้าง Type มารองรับข้อมูลเพลงที่รวมศัพท์ไว้ข้างใน
-type SongWithVocabs = Song & {
-  vocabs: Vocab[]
-}
-
-export default async function VocabPage() {
-  // 2. ดึงข้อมูลและระบุ Type ให้ตัวแปร songs ชัดเจนว่าเป็น Array ของ SongWithVocabs
-  const songs: SongWithVocabs[] = await prisma.song.findMany({
+export default async function LibraryPage() {
+  const songs = await prisma.song.findMany({
     include: {
-      vocabs: true,
+      _count: {
+        select: { vocabs: true }
+      }
     },
+    orderBy: { createdAt: 'desc' }
   })
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8 text-center">My Lyrics Library</h1>
-      
-      <div className="grid gap-6">
-        {songs.length === 0 ? (
-          <p className="text-center text-gray-500">ยังไม่มีเพลงในคลังเลยไอ้หนู ไปเพิ่มใน Neon ก่อน!</p>
-        ) : (
-          songs.map((song) => (
-            <Card key={song.id}>
-              <CardHeader>
-                <CardTitle className="text-blue-500">{song.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {song.vocabs.map((v) => (
-                    <li key={v.id} className="flex justify-between items-center border-b pb-2">
-                      <span>
-                        <strong className="text-lg">{v.kanji}</strong> ({v.reading}) - {v.meaning}
-                      </span>
-                      {/* ส่ง ID ไปที่ปุ่มกด (Client Component) */}
-                      <VocabActions vocabId={v.id} />
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))
-        )}
+    <div className="max-w-5xl mx-auto p-8">
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-4xl font-extrabold tracking-tight">My Lyrics Library</h1>
+          <p className="text-muted-foreground mt-2">สะสมบทเพลงและคำศัพท์ที่คุณรักไว้ที่นี่</p>
+        </div>
+        <Link 
+          href="/song/create" 
+          className="bg-primary text-primary-foreground px-6 py-3 rounded-full font-bold hover:opacity-90 transition-all flex items-center gap-2"
+        >
+          + Add New Song
+        </Link>
       </div>
+      
+      {songs.length === 0 ? (
+        <div className="text-center py-20 bg-accent/20 rounded-3xl border-2 border-dashed border-primary/20">
+          <Music className="mx-auto h-16 w-16 text-muted-foreground mb-4 opacity-20" />
+          <h2 className="text-2xl font-bold">ยังไม่มีเพลงในคลังเลย</h2>
+          <p className="text-muted-foreground mt-2 mb-6">เริ่มเพิ่มเพลงแรกของคุณเพื่อฝึกศัพท์ได้ทันที!</p>
+          <Link href="/song/create" className="text-primary font-bold underline">ไปหน้าเพิ่มเพลง</Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {songs.map((song) => (
+            <Link href={`/library/${song.id}`} key={song.id} className="group">
+              <Card className="h-full hover:border-primary/50 transition-all hover:shadow-xl group-hover:-translate-y-1 overflow-hidden">
+                <CardHeader className="pb-3">
+                  <CardTitle className="line-clamp-1 group-hover:text-primary transition-colors">
+                    {song.title}
+                  </CardTitle>
+                  <CardDescription>
+                    บันทึกเมื่อ {new Date(song.createdAt).toLocaleDateString('th-TH')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <BookOpen size={16} />
+                    <span>{song._count.vocabs} คำศัพท์ที่บันทึกไว้</span>
+                  </div>
+                  <div className="mt-4 text-xs font-bold text-primary uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
+                    Click to study →
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
