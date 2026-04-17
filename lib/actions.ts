@@ -7,8 +7,14 @@ import { songSchema, vocabSchema } from "./schemas"
 
 export async function searchSongAction(query: string) {
   if (!query) return []
-  const results = await searchSongs(query)
-  return results
+  const res = await searchSongs(query)
+  
+  // ตรวจสอบว่าเป็น Error Object หรือไม่
+  if (res && 'error' in res) {
+    return { error: res.error }
+  }
+  
+  return res
 }
 
 export async function fetchSongDetailsAction(songId: number) {

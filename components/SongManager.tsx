@@ -31,8 +31,20 @@ export default function SongManager() {
     
     try {
       const res = await searchSongAction(query)
-      setResults(res)
-      if (res.length === 0) toast.error("ไม่พบเพลงที่ค้นหา")
+      
+      // ตรวจสอบ Error จาก Server
+      if (res && typeof res === 'object' && 'error' in res) {
+        toast.error(res.error as string)
+        setLoading(false)
+        return
+      }
+
+      const songResults = Array.isArray(res) ? res : []
+      setResults(songResults)
+      
+      if (songResults.length === 0) {
+        toast.error("ไม่พบเพลงที่ค้นหา")
+      }
     } catch (error) {
       toast.error("เกิดข้อผิดพลาดในการค้นหา")
     } finally {
